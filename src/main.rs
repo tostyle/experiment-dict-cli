@@ -1,17 +1,20 @@
-use clap::Command;
-use rig::{agent::Agent, completion::Prompt, providers::openai::CompletionModel};
+mod agent;
+mod cli;
+
+use agent::create_agent;
+use cli::{handle_command, handle_receiver, readline};
+use rig::{agent::Agent, providers::openai::CompletionModel};
 use std::{
     io::Write,
-    sync::{mpsc, Arc},
+    sync::{mpsc, mpsc::Receiver, mpsc::Sender, Arc},
 };
-
-mod agent;
-use agent::create_agent;
 #[tokio::main]
 async fn main() {
-    let (tx, rx): (mpsc::Sender<String>, mpsc::Receiver<String>) = mpsc::channel();
-    // let agent = create_agent();
+    let (tx, rx): (Sender<String>, Receiver<String>) = mpsc::channel();
     let agent = Arc::new(create_agent());
+    tokio::spawn(async move {
+        handle_receiver(rx);
+    });
     loop {
         let line = readline();
         let line = line.unwrap();
@@ -19,28 +22,11 @@ async fn main() {
             continue;
         }
 
-        let agent = Arc::clone(&agent);
-
+        let agent: Arc<Agent<CompletionModel>> = Arc::clone(&agent);
+        let tx = tx.clone();
         tokio::spawn(async move {
-            let response = &agent.prompt(&line).await;
-            match response {
-                Ok(output) => {
-                    writeln!(std::io::stdout(), "{}", output).unwrap();
-                }
-                Err(err) => {
-                    writeln!(std::io::stdout(), "Error: {}", err).unwrap();
-                }
-            }
+            handle_command(agent, line, tx).await;
+            // tx.send(true.to_string()).unwrap();
         });
     }
-}
-
-fn readline() -> Result<String, String> {
-    write!(std::io::stdout(), "$ ").map_err(|e| e.to_string())?;
-    std::io::stdout().flush().map_err(|e| e.to_string())?;
-    let mut buffer = String::new();
-    std::io::stdin()
-        .read_line(&mut buffer)
-        .map_err(|e| e.to_string())?;
-    Ok(buffer)
 }
