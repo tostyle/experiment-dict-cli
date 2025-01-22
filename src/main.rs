@@ -8,16 +8,6 @@ use std::{
     sync::{mpsc, mpsc::Receiver, mpsc::Sender, Arc},
 };
 
-fn clear_stdout() {
-    print!("\x1B[2J\x1B[1;1H");
-    std::io::stdout().flush().unwrap();
-}
-
-fn clear_stdin() {
-    let mut buffer = String::new();
-    std::io::stdin().read_line(&mut buffer).unwrap();
-}
-
 #[tokio::main]
 async fn main() {
     let (tx, rx): (Sender<(String, String)>, Receiver<(String, String)>) = mpsc::channel();
@@ -35,13 +25,12 @@ async fn main() {
         if line.is_empty() {
             continue;
         }
-        writeln!(std::io::stdout(), "Processing... '{}'", line).unwrap();
+        writeln!(std::io::stdout(), "processing... '{}'", line).unwrap();
 
         let agent: Arc<Agent<CompletionModel>> = Arc::clone(&agent);
         let tx = tx.clone();
         tokio::spawn(async move {
             handle_command(agent, &line, &tx).await;
-            // tx.send(line.to_string()).unwrap();
         });
     }
 }

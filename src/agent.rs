@@ -13,8 +13,8 @@ pub fn create_agent() -> Agent<CompletionModel> {
             The meaning of the word along with its type (e.g., noun, verb, adjective, adverb). \
             An example sentence using the word in context. \
             Respond in the following format: \
+            do not insert '\"' in result \
             [meaning] <your response here>  \
-            separate meaning and example by ':::'
             [example] <your response here> \
             ",
         )
